@@ -50,6 +50,6 @@ DuckDB 支援 Lazy execution 與平行運算，也能根據操作進行最佳化
 
 總結來說，Pandas、Polars 與 DuckDB 各有優勢，使用者可以根據具體需求選擇合適的工具來進行資料分析。它們三者並非完全是互相取代的關係，而是彼此互補，因此建議使用者可以在新專案時嘗試新工具，而非將現有的專案直接搬遷到另一個套件生態圈。此外，這三個套件間的相容性隨著開發過程中已越來越高，讓使用者可以在專案中根據情境選擇適合的套件無痛轉換。
 
-![Polars vs. Pandas](Polars_Pandas.png)
+![Polars vs. Pandas](Pics/Polars_Pandas.png)
 
-![Polars vs. DuckDB](Polars_DuckDB.png)
+![Polars vs. DuckDB](Pics/Polars_DuckDB.png)
