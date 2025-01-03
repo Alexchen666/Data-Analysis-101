@@ -63,40 +63,21 @@ def _():
 
 
 @app.cell
-def _(pl):
-    dtype_mapping = {
-        pl.Int8: 'int',
-        pl.Int16: 'int',
-        pl.Int32: 'int',
-        pl.Int64: 'int',
-        pl.UInt8: 'int',
-        pl.UInt16: 'int',
-        pl.UInt32: 'int',
-        pl.UInt64: 'int',
-        pl.Float32: 'float',
-        pl.Float64: 'float',
-        pl.Decimal: 'float',
-        pl.String: 'str',
-        pl.Boolean: 'bool',
-    }
-    return (dtype_mapping,)
-
-
-@app.cell
 def _(mo):
     def create_column_config(col_name: str, inferred_type: str):
         """Create configuration UI elements for a single column"""
         return {
-            "type": mo.ui.text(
-                placeholder=inferred_type,
+            "type": mo.ui.dropdown(
+                options=["Literal", "int", "float", "str", "bool"],
                 value=inferred_type,
-                label=f"Type for {col_name}"
+                label="Data Type"
             ),
             "optional": mo.ui.checkbox(label="Optional", value=False),
             "unique": mo.ui.checkbox(label="Unique", value=False),
             "min_value": mo.ui.number(label="Min value", value=None),
             "max_value": mo.ui.number(label="Max value", value=None),
-            "literal_values": mo.ui.text_area(label="Literal values (one per line)", value="", placeholder="Only for Literal type")
+            "literal_values": mo.ui.text_area(label="Literal values (one per line)", value="", placeholder="Only for Literal type", full_width=True),
+            "constraints": mo.ui.text_area(label="Constraints", value="", placeholder="Enter constraints here, written in Polars expressions", full_width=True)
         }
     return (create_column_config,)
 
@@ -116,13 +97,14 @@ def _(create_column_config, df, dtype_mapping, mo):
 
         all_forms.append(
             mo.vstack([
-            mo.md(f"### Configure {c}"),
+            mo.md(f"### {c}"),
             controls["type"],
             controls["optional"],
             controls["unique"],
             controls["min_value"],
             controls["max_value"],
             controls["literal_values"],
+            controls["constraints"],
             mo.md("---")
             ])
         )
@@ -135,7 +117,10 @@ def _(all_forms, mo):
 
     # Combine all elements using mo.vstack
     interface = mo.vstack([
-        mo.md("## 欄位設定"),
+        mo.md("""---
+        
+        ## 欄位設定
+        """),
         *all_forms,
         run,
     ])
@@ -153,11 +138,11 @@ def _(interface):
 def _(Dict):
     def generate_model_code(column_configs: Dict) -> str:
         code_lines = ["class P(pt.Model):"]
-        
+
         for col, config in column_configs.items():
             field_def = f"    {col}: "
             field_type = config["type"]
-            
+
             if field_type == "Literal":
                 values = [f"'{val.strip()}'" for val in config["literal_values"].split('\n') if val.strip()]
                 if values:
@@ -166,23 +151,25 @@ def _(Dict):
                     field_def += 'str'
             else:
                 field_def += field_type
-            
+
             # Add field configurations
             field_configs = []
             if config["unique"]:
                 field_configs.append('unique=True')
-                
+
             if not field_type.startswith('Optional'):
                 if config["min_value"] is not None:
                     field_configs.append(f'ge={config["min_value"]}')
                 if config["max_value"] is not None:
                     field_configs.append(f'le={config["max_value"]}')
-            
+                if config["constraints"] != "":
+                    field_configs.append(f'constraints={config["constraints"]}')
+
             if field_configs:
                 field_def += f" = pt.Field({', '.join(field_configs)})"
-                
+
             code_lines.append(field_def)
-        
+
         return "\n".join(code_lines)
     return (generate_model_code,)
 
@@ -197,17 +184,18 @@ def _(columns_config, df, generate_model_code, mo, run):
         for col in df.columns:
             cont = columns_config[col]
             base_type = cont["type"].value
-        
+
             final_type = f"Optional[{base_type}]" if cont["optional"].value else base_type
-            
+
             configs[col] = {
                 "type": final_type,
                 "unique": cont["unique"].value,
                 "min_value": cont["min_value"].value,
                 "max_value": cont["max_value"].value,
-                "literal_values": cont["literal_values"].value
+                "literal_values": cont["literal_values"].value,
+                "constraints": cont["constraints"].value
             }
-        
+
         code = generate_model_code(configs)
 
     mo.md(f"""## Preview:
@@ -216,7 +204,6 @@ def _(columns_config, df, generate_model_code, mo, run):
     {code}
     ```
     """)
-        
     return base_type, code, col, configs, cont, final_type
 
 
@@ -234,17 +221,27 @@ def _(mo):
 
 
 @app.cell
-def _(ErrorReporter, P, code, df, gen):
+def _(ErrorReporter, P, code, df, gen, mo):
     if gen.value:
-        exec(code)
-        v = ErrorReporter(P, df)
+        try:
+            exec(code)
+            v = ErrorReporter(P, df)
+        except SyntaxError as e:
+            mo.output.replace(f"SyntaxError: {e}")
+        except NameError as e:
+            mo.output.replace(f"NameError: {e}")
     return (v,)
 
 
 @app.cell
 def _(v):
-    v.report()
-    return
+    try:
+        report = v.report()
+    except:
+        report = None
+
+    report
+    return (report,)
 
 
 @app.cell
@@ -351,6 +348,26 @@ def _(Dict, List, pl, re):
         def __str__(self):
             return str(self.error_report)
     return (ErrorReporter,)
+
+
+@app.cell
+def _(pl):
+    dtype_mapping = {
+        pl.Int8: 'int',
+        pl.Int16: 'int',
+        pl.Int32: 'int',
+        pl.Int64: 'int',
+        pl.UInt8: 'int',
+        pl.UInt16: 'int',
+        pl.UInt32: 'int',
+        pl.UInt64: 'int',
+        pl.Float32: 'float',
+        pl.Float64: 'float',
+        pl.Decimal: 'float',
+        pl.String: 'str',
+        pl.Boolean: 'bool',
+    }
+    return (dtype_mapping,)
 
 
 if __name__ == "__main__":
