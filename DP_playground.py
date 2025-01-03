@@ -29,7 +29,7 @@ def _(mo, widget):
 
     ## 創建資料
 
-    設定 20 位員工的年薪。橫軸為員工編號，從 0 開始到 19，共 20 位員工。縱軸則為每位員工對應的年薪，單位為萬元。
+    請設定 20 位員工的年薪。橫軸為員工編號，從 0 開始到 19，共 20 位員工。縱軸則為每位員工對應的年薪，單位為萬元。
 
     {widget}
     ''')
@@ -99,19 +99,30 @@ def _(mo):
 
 
 @app.cell
-def _(mo, multiselect):
-    mo.hstack([multiselect, mo.md(f'您已選擇：{multiselect.value}')])
-    return
+def _(mo, np, salaries):
+    def service(multiselect):
+        """
+        顯示選擇的員工的平均年薪
+
+        Args:
+        multiselect: object 選擇器物件
+
+        Returns:
+        None
+        """
+        if len(multiselect.value) < 5:
+            return mo.md('請選擇五位以上的員工編號')
+        else:
+            ind = np.array(multiselect.value, dtype='int')
+            return mo.md(f'這些員工的平均年薪為 {np.mean(salaries[ind]):.2f} 萬元')
+    return (service,)
 
 
 @app.cell
-def _(mo, multiselect, np, salaries):
-    if len(multiselect.value) < 5:
-        mo.output.replace(mo.md('請選擇五位以上的員工編號'))
-    else:
-        ind = np.array(multiselect.value, dtype='int')
-        mo.output.replace(mo.md(f'這些員工的平均年薪為 {np.mean(salaries[ind]):.2f} 萬元'))
-    return (ind,)
+def _(mo, multiselect, service):
+    mo.callout(mo.vstack([mo.hstack([multiselect, mo.md(f'您已選擇：{multiselect.value}')]),
+                         mo.md(f'''{service(multiselect)}''')]))
+    return
 
 
 @app.cell
@@ -139,7 +150,7 @@ def _(
     mo.md(
         f"""
         ---
-        
+
         ### 還原出特定資料
 
         你也許發現了，儘管在此服務中僅提供薪資平均數，但我們仍可以還原出特定資料。假設我們今天要還原第 1 位員工（編號為 0）的薪水，我們只需要知道：
@@ -185,7 +196,9 @@ def _(mo):
 
         ## 保護釋出的平均數
 
-        如果我們想安全地提供這項平均數計算服務，維持一樣的彈性與功能，並且**無法從輸出（平均數）來反推或是洩漏輸入（資料集）的相關資訊**，我們可以使用差分隱私來達成。在詳細介紹以前，我們先來看看差分隱私可以做到什麼。
+        如果我們想安全地提供這項平均數計算服務，維持一樣的彈性與功能，並且**無法從輸出（平均數）來反推相關資訊**，我們可以使用差分隱私來達成。在詳細介紹以前，我們先來看看差分隱私可以做到什麼。
+
+        在前面的實驗中，我們成功得知第一位員工的年薪。現在我們**使用差分隱私來保護平均數的計算過程**，觀察是否能有效抵禦攻擊。
         """
     )
     return
@@ -229,10 +242,6 @@ def _(mo):
 def _(button_dp_overall, mo):
     mo.md(
         f"""
-        ### 使用差分隱私保護
-
-        在前面的實驗中，我們成功得知第一位員工的年薪。現在我們**使用差分隱私來保護平均數的計算過程**，觀察是否能有效抵禦攻擊。
-
         ---
 
         ### 所有員工的年薪平均數
@@ -312,7 +321,7 @@ def _(mo):
 def _(button_dp_exclude, mo):
     mo.md(
         f'''---
-        
+
         ### 第一位員工以外的平均年薪
 
         {button_dp_exclude}
@@ -400,7 +409,7 @@ def _(mo):
 def _(button_attack, mo):
     mo.md(
         f"""---
-        
+
         ### 第一位員工的年薪
 
         加入差分隱私後，可以看到經過差分隱私保護的年薪平均數依然與原始平均數相近，那此時我們採取差異攻擊會得到什麼結果呢？差分隱私是否可以保護第一位員工的年薪資訊不被洩露？
@@ -486,7 +495,7 @@ def _(
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md("""我們可以發現，差分隱私有效地保護了資料隱私，即使攻擊者進行差異攻擊，也無法得知真實值，有時甚至會給出差異很大的答案。但從上述執行 1000 次差分隱私的計算結果可發現，每次拉普拉斯機制輸出的值並不固定，可能會很接近真實值，也可能會遠離真實值，且攻擊者並沒有辦法單就數次的查詢得知真實值，最多僅能「趨近」真實值。因此，差分隱私是一個有效的隱私保護機制，能夠在保護個人隱私的同時，提供有限的統計查詢功能。""")
+    mo.md("""我們可以發現，差分隱私有效地保護了資料隱私，即使攻擊者進行差異攻擊，也無法得知真實值，有時甚至會給出差異很大的答案。從上述執行 1000 次差分隱私的計算結果可發現，每次差分隱私機制輸出的值並不固定，可能會很接近真實值，也可能會遠離真實值，因此攻擊者並沒有辦法單就數次的查詢得知真實值，最多僅能「趨近」真實值。這代表差分隱私是一個有效的隱私保護機制，能夠在保護個人隱私的同時，提供有限的統計查詢功能。""")
     return
 
 
@@ -497,9 +506,9 @@ def _(mo):
         ---
         ## 原理介紹
 
-        在前面的實驗中，我們了解到直接釋出平均數是不安全的，可能會遭受差異攻擊而能還原出個人隱私資料。並且我們也了解到：差分隱私可以防禦此攻擊，藉由加入雜訊讓攻擊者無法從輸出（平均數）來反推或是洩漏輸入（資料集）的相關資訊，但又能給予幾乎正確的統計值查詢。差分隱私是如何做到的？接下來，我們將詳細探討差分隱私的原理。
+        在前面的實驗中，我們了解到直接釋出平均數是不安全的，可能會遭受差異攻擊而能還原出個人隱私資料。並且我們也了解到：差分隱私可以防禦此攻擊，藉由加入雜訊讓攻擊者無法從輸出（平均數）來反推相關資訊，但又能給予幾乎正確的統計值查詢。差分隱私是如何做到的？接下來，我們將詳細探討差分隱私的原理。
 
-        簡單來說，差分隱私是透過加入特定「雜訊」的方式，達成數學上可量化的隱私保護。什麼事「數學上可量化的隱私保護」呢？我們可以從差分隱私較直白的定義著手：在給定的兩個相鄰的資料集，針對分析者欲計算的目標，兩資料集所得之值形成的分配，距離不會大到讓分析者可以判斷這兩資料集有差異。
+        簡單來說，差分隱私是透過加入特定「雜訊」的方式，達成數學上可量化的隱私保護。什麼是「數學上可量化的隱私保護」呢？我們可以從差分隱私較直白的定義著手：在給定的兩個相鄰的資料集，針對分析者欲計算的目標，兩資料集所得之值形成的分配，距離不會大到讓分析者可以判斷這兩資料集有差異。
 
         我們接著來詳細說明
 
@@ -516,19 +525,21 @@ def _(mo):
         r"""
         ### 相鄰資料集/資料集距離
 
-        相鄰的定義為兩資料集只差一個個體的紀錄，一般來說這代表資料集的距離為 1，不過如何何謂「資料集的距離」？這邊我們採用 Symmetric Distance 進行定義，也就是兩個資料集的差集大小。換個方式說，這兩個資料集相差幾筆資料，且其他資料都完全一樣。若寫成數學的形式：
+        相鄰的定義為兩資料集只差一個個體的記錄，一般來說這代表資料集的距離為 1，不過如何何謂「資料集的距離」？這邊我們採用 Symmetric Distance 進行定義，也就是兩個資料集的差集大小。換個方式說，這個值代表在取出一個個體記錄後，這兩個資料集相差幾筆資料。若寫成數學的形式：
 
         $$d_{Sym}(u,v) = |u-v ∪ v-u| = \sum_{x}|\#\{i:x=u_i\}-\#\{i:x=v_i\}|$$
 
         其中 $u,v$ 為兩個資料集。舉例來說，若 $u=\{1,2,3\}, v=\{1,2\}$，則 $d_{Sym}(u,v)=1.$
 
-        需要注意的是，有些時候相鄰的資料集距離並非距離為 1。例如若每一個客戶在資料集中與 5 筆記錄有關，則此時距離為 5。不過在差分隱私中，我們基本上都預設一個個體在資料集中的紀錄只有一筆，以簡化計算。
+        需要注意的是，有些時候相鄰的資料集距離並非距離為 1。例如若每一個客戶在資料集中與 5 筆記錄有關，則此時距離為 5。不過在差分隱私中，我們基本上都預設一個個體在資料集中的記錄只有一筆，以簡化計算。
 
         ### 分配的差異 (Divergence)
 
         在統計上，有多種方式可以定義兩個分配之間的距離，在此我們採用的是 Max Divergence，代表在所有可能的範圍內，兩個分配最大的差異。下圖代表的是給定一個範圍 (支撐集/support) $S$，兩個分配的差異圖：
 
         ![](https://docs.opendp.org/en/stable/_images/theory_a-framework-to-understand-dp_11_0.png)
+
+        Pic. from OpenDP
 
         其中藍底、橘底的部分分別代表兩分配（以藍色線、橘色線表示）在給定範圍 $S$ 下的差異。具體計算方法如下：
 
@@ -570,13 +581,13 @@ def _(mo):
 
         ### 概念彙整
 
-        至此我們介紹完差分隱私重要的幾個元素，接下來將會利用這些元素進行組合，進行差分隱私的計算。理論上，進行差分隱私的計算時，我們會需要先計算相鄰資料集的距離，接著進行上下界的調整，以確保接下來再進行敏感度計算上是有限的 (bounded)。接著再進行統計值的計算，如計數、平均數、總合等。計算過程中，我們可以藉由比較相鄰資料集經過統計值計算後的結果，得知敏感度與分配差異，藉此得知要加入多少雜訊來保護資料（或者藉由加入的雜訊量得知隱私保護力 $\epsilon$）。
+        至此我們介紹完差分隱私重要的幾個元素，接下來將會利用這些元素進行組合，進行差分隱私的計算。理論上，進行差分隱私的計算時，我們會需要先計算相鄰資料集的距離，接著進行上下界的調整，以確保接下來進行敏感度計算上是有限的 (bounded)。接著再進行統計值的計算，如計數、平均數、總合等。計算過程中，我們可以藉由比較相鄰資料集經過統計值計算後的結果，得知敏感度與分配差異，藉此得知要加入多少雜訊來保護資料（或者藉由加入的雜訊量得知隱私保護力 $\epsilon$）。
 
         數學上，若我們將相鄰的兩資料集 ($X,Y$) 之距離以 Symmetric Distance 計算，並以 $d_{in}$ 來表示（即 $d_{Sym} = d_{in}$），則經過上下界調整後（調整至 $[L,U]$），我們可以確保進行總和運算後，敏感度為：
 
         $$\Delta=\max|\text{clamped sum}(X)-\text{clamped sum}(Y)|=d_{in}\cdot\max(|L|,U)$$
 
-        接著我們將總和運算結果分別以 $x,y$ 表示，並利用一 $\epsilon$-差分隱私演算法：拉普拉斯機制 (Laplace Mechanism) $M$ 加入雜訊，其中拉普拉斯機制需要給定一參數 scale，我們將其設為 $\sigma$，則對於 $x,y\in\mathbb{R}$ 使得 $d_{Abs}(x,y)\leq \Delta$ 且 $d_{out}=\Delta/\sigma$，分配差異為：
+        接著我們將總和運算結果分別以 $x,y$ 表示，並利用一 $\epsilon$-差分隱私演算法：拉普拉斯機制 (Laplace Mechanism) $M$ 加入雜訊，其中拉普拉斯機制需要給定一參數 scale，我們將其設為 $b$，則對於 $x,y\in\mathbb{R}$ 使得 $d_{Abs}(x,y)\leq \Delta$ 且 $d_{out}=\Delta/b$，分配差異為：
 
         $$D_{\text{MaxDivergence}}(M(x),M(y))\le d_{out}$$
 
@@ -644,12 +655,6 @@ def _(alt, df_lp, slider_lp):
 
 
 @app.cell
-def _(hist_lp, mo):
-    mo.ui.altair_chart(hist_lp, label='拉普拉斯機制的雜訊分配')
-    return
-
-
-@app.cell
 def _(hist_lp, mo, slider_lp):
     mo.vstack([mo.hstack([slider_lp, mo.md(f'目前的 b 為：{slider_lp.value}')]), mo.ui.altair_chart(hist_lp, label='拉普拉斯機制的雜訊分配')])
     return
@@ -657,9 +662,7 @@ def _(hist_lp, mo, slider_lp):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r'''
-    由圖可知，若將 $b$ 增大，會導致值往兩側擴散，大部分的值會更加偏離 0，導致加入的雜訊量較多。將前面我們已知的 $\epsilon$ 與 $b$ 的關係連結起來，便能推出：$\epsilon$ 越小，會加入的雜訊量越多。加入的雜訊越多越能混淆分析後的結果，讓攻擊者更難推論出正確的值，因此保護力提升。反之，若 $\epsilon$ 越大，則加入的雜訊量越少，分析後的結果會更接近真實值，但也會讓攻擊者更容易推論出正確的值，因此保護力下降。
-    ''')
+    mo.md(r"""由圖可知，若將 $b$ 增大，會導致值往兩側擴散，大部分的值會更加偏離 0，導致加入的雜訊量較多。將前面我們已知的 $\epsilon$ 與 $b$ 的關係連結起來，便能推出：$\epsilon$ 越小，會加入的雜訊量越多。加入的雜訊越多越能混淆分析後的結果，讓攻擊者更難推論出正確的值，因此保護力提升。反之，若 $\epsilon$ 越大，則加入的雜訊量越少，分析後的結果會更接近真實值，但也會讓攻擊者更容易推論出正確的值，因此保護力下降。""")
     return
 
 
@@ -744,8 +747,59 @@ def _(mo):
 
 @app.cell
 def _(
+    alt,
+    button_eps,
+    dp_mean_eps_1,
+    dp_mean_eps_2,
+    n_obs,
+    np,
+    pl,
+    salaries,
+):
+    dp_overall_mean_attack_eps_ = np.array([dp_mean_eps_1(salaries) for _ in range(1000)])
+    dp_exclude_mean_attack_eps_ = np.array([dp_mean_eps_2(salaries[1:]) for _ in range(1000)])
+    attack_income_eps_ = dp_overall_mean_attack_eps_ * n_obs - dp_exclude_mean_attack_eps_ * (n_obs - 1)
+    df_attack_eps = pl.DataFrame({'Attack Income': attack_income_eps_})
+
+    hist_dp_attack_eps = alt.Chart(df_attack_eps).mark_bar().encode(
+        alt.X('Attack Income', bin=alt.Bin(maxbins=100), title='第一位員工的薪水'),
+        y='count()'
+    )
+
+    rule_attack_eps = alt.Chart().mark_rule(color='red').encode(
+        x=alt.X(datum=salaries[0]),
+        size=alt.value(3)
+    )
+
+    annot_attack_eps = alt.Chart().mark_text(
+        text='第一位員工的真實薪水',
+        color='red',
+        align='left',
+        baseline='middle',
+        dx=7
+    ).encode(
+        x=alt.X(datum=salaries[0]),
+        y=alt.value(10)
+    )
+
+    plot_attack_eps = (hist_dp_attack_eps + rule_attack_eps + annot_attack_eps) if button_eps.value else alt.Chart().mark_text(text='請啟動差分隱私', dx=0, dy=0, size=30, color='gray')
+    return (
+        annot_attack_eps,
+        attack_income_eps_,
+        df_attack_eps,
+        dp_exclude_mean_attack_eps_,
+        dp_overall_mean_attack_eps_,
+        hist_dp_attack_eps,
+        plot_attack_eps,
+        rule_attack_eps,
+    )
+
+
+@app.cell
+def _(
     button_eps,
     mo,
+    plot_attack_eps,
     slider_eps,
     stat_mean_diff_attack_eps,
     stat_mean_diff_exclude_eps,
@@ -759,11 +813,15 @@ def _(
 ):
     mo.vstack([
         mo.hstack([slider_eps, mo.md(f'目前的 epsilon 為：{slider_eps.value}')], justify='space-around'),
-        button_eps,
+        mo.hstack([button_eps], justify='center'),
         mo.md('''---'''),
-        mo.hstack([stat_mean_salaries_eps, stat_mean_salaries_eps_dp, stat_mean_eps_diff]),
-        mo.hstack([stat_mean_salaries_exclude_eps, stat_mean_salaries_exclude_eps_dp, stat_mean_diff_exclude_eps]),
-        mo.hstack([stat_mean_salaries_attack_eps, stat_mean_salaries_attack_eps_dp, stat_mean_diff_attack_eps])
+        mo.hstack([mo.vstack([mo.md(r'''$\quad$ 實際資料'''), stat_mean_salaries_eps, 
+                              stat_mean_salaries_exclude_eps, stat_mean_salaries_attack_eps]),
+                  mo.vstack([mo.md(r'''$\quad$ 透過差分隱私計算的結果'''), stat_mean_salaries_eps_dp, 
+                             stat_mean_salaries_exclude_eps_dp, stat_mean_salaries_attack_eps_dp]),
+                  mo.vstack([mo.md(r'''$\quad$ 兩者差異'''), stat_mean_eps_diff, 
+                             stat_mean_diff_exclude_eps, stat_mean_diff_attack_eps])]),
+        mo.ui.altair_chart(plot_attack_eps, label='執行 1000 次差異攻擊的計算結果')
     ])
     return
 
